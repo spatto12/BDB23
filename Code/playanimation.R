@@ -10,9 +10,7 @@ library(lubridate)
 library(sf)
 
 team <- week |>
-  #select(playId, possessionTeam, yardlineNumber) |>
-  filter(possessionTeam=='DEN') #|>
-  #distinct()
+  filter(possessionTeam=='DEN') 
 
 example.play <- team |>
   filter(gameId==2021101709, playId==349, possessionTeam=='DEN') |>
@@ -100,6 +98,8 @@ pos_col = unique(example.play$team_color2[example.play$team==example.play$posses
 #Defensive Team
 def_team = unique(example.play$defensiveTeam[example.play$team==example.play$defensiveTeam])
 def_side = unique(example.play$side[example.play$team==example.play$defensiveTeam])
+def_col0 = unique(example.play$team_color[example.play$team==example.play$defensiveTeam])
+def_col = unique(example.play$team_color2[example.play$team==example.play$defensiveTeam])
 
 #size by weight or bmi metric
 #Fix LOS
@@ -165,13 +165,21 @@ animate.play <- ggplot() + gg_field(yardmin = ydmin, yardmax = ydmax, endzone_co
   #Convex Hulls for the Pass Protection and the Pass Rush
   geom_polygon(data=playdf %>% filter(valx=="hull", ID!=def_team),
                aes(x = x, y = y, group = ID, fill = ID, color = ID), alpha = 0.5) + 
-  #Player
-  geom_point(data=playdf %>% filter(valx=="player"),
+  #Player (OFF)
+  geom_point(data=playdf %>% filter(valx=="player", ID!=def_team),
              aes(x = x, y = y,
                  fill = ID, color = ID), shape = 21, alpha = 0.7, size = 8) +
-  #Jersey Number
-  geom_text(data=playdf %>% filter(valx=="player"),
+  #Player (DEF)
+  geom_point(data=playdf %>% filter(valx=="player", ID==def_team),
+             aes(x = x, y = y), 
+             fill = def_col, color = def_col0, shape = 21, alpha = 0.7, size = 8) +
+  #Jersey Number (OFF)
+  geom_text(data=playdf %>% filter(valx=="player", ID!=def_team),
             aes(x = x, y = y, group = ID, label = jerseyNumber), color = 'white', 
+            vjust = 0.36, size = 3.5) +
+  #Jersey Number (DEF)
+  geom_text(data=playdf %>% filter(valx=="player", ID==def_team),
+            aes(x = x, y = y, group = ID, label = jerseyNumber), color = def_col0, 
             vjust = 0.36, size = 3.5) +
   #Play Description
   geom_text(aes(x=hw, y =-2), label = desc, size = 3, color = 'white') +
