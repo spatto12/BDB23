@@ -65,86 +65,6 @@ rusher <- predict |>
   mutate(pop = test_actual - test_pred_probs) |>
   distinct() 
 
-team <- rusher |>
-  group_by(gameId, playId, nflId) |>
-  summarize(
-    press = mean(test_actual),
-    xpress = mean(test_pred_probs),
-    pop = mean(pop),
-    epa = mean(epa),
-    posteam = last(postm),
-    team = last(team)
-  ) |>
-  ungroup() |>
-  mutate(transPOP = ifelse(pop>0, (1 - pop),
-                           ifelse(pop<0, (pop + 1) * -1, 0)),
-         normPOP = (transPOP + 1)/2,
-         zscore = scale(xpress, center = TRUE, scale = TRUE)) 
-
-def <- team |>
-  group_by(team) |>
-  summarize(
-    NormPOP = mean(normPOP),
-    Zscore = mean(zscore)
-  ) |>
-  ungroup()
-
-off <- team |>
-  group_by(posteam) |>
-  summarize(
-    NormPOP = mean(normPOP),
-    Zscore = mean(zscore)
-  ) |>
-  ungroup()
-
-def |>
-  ggplot(aes(x=NormPOP, y=Zscore)) +
-  #Vertical Line
-  geom_vline(xintercept=mean(def$NormPOP), linetype="dashed", color = "red", size=0.5) +
-  #Horizontal Line
-  geom_hline(yintercept=mean(def$Zscore), linetype="dashed", color = "red", size=0.5) +
-  #Team Logos
-  nflplotR::geom_nfl_logos(aes(team_abbr = team), width = 0.05) +
-  #Labels
-  labs(x = "Normalized POP",
-       y = "Predicted Pressures Standardized (PPS)",
-       title = "How well did Pass Rush Units Perform?",
-       subtitle = "Through the first eight weeks (2021)") +
-  #Themes
-  theme_fivethirtyeight() +
-  theme(legend.position='none') +
-  theme(axis.title = element_text(size = 12, face = "bold"),
-        axis.text = element_text(face="bold")) +
-  theme(plot.title = element_text(size = 14, face = "bold"),
-        plot.subtitle = element_text(size=12))+
-  #Axis Ticks
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 8), labels = label_number(accuracy = .01)) +
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 8), labels = label_number(accuracy = .001))
-
-off |>
-  ggplot(aes(x=NormPOP, y=Zscore)) +
-  #Vertical Line
-  geom_vline(xintercept=mean(off$NormPOP), linetype="dashed", color = "red", size=0.5) +
-  #Horizontal Line
-  geom_hline(yintercept=mean(off$Zscore), linetype="dashed", color = "red", size=0.5) +
-  #Team Logos
-  nflplotR::geom_nfl_logos(aes(team_abbr = posteam), width = 0.05) +
-  #Labels
-  labs(x = "Normalized POP",
-       y = "Predicted Pressures Standardized (PPS)",
-       title = "How well did Pass Block Units Perform?",
-       subtitle = "Through the first eight weeks (2021)") +
-  #Themes
-  theme_fivethirtyeight() +
-  theme(legend.position='none') +
-  theme(axis.title = element_text(size = 12, face = "bold"),
-        axis.text = element_text(face="bold")) +
-  theme(plot.title = element_text(size = 14, face = "bold"),
-        plot.subtitle = element_text(size=12))+
-  #Axis Ticks
-  scale_y_reverse(breaks = scales::pretty_breaks(n = 8), labels = label_number(accuracy = .01)) +
-  scale_x_reverse(breaks = scales::pretty_breaks(n = 8), labels = label_number(accuracy = .001))
-
 rusher0 <- rusher |>
   group_by(gameId, playId, nflId) |>
   summarize(
@@ -255,7 +175,7 @@ write.csv(rusher0, "rusher.csv", row.names=FALSE)
 
 rusher0 <- read.csv("rusher.csv")
 
-
+#Reactive Table
 r0 <- rusher0 |>
   left_join(teams_colors_logos, by = c('team' = 'team_abbr')) |>
   select(c(name, pos, plays, team_logo_espn, maxspeed, inside_pocket, resistance, Pressure, xPressure, POP)) |>
@@ -320,7 +240,7 @@ pop <- rusher0 |>
          Zscore_25less, Zscore_25more, POP, NormPOP, npop_1, npop_0, finishrate) |>
   filter(plays>=85)
 
-
+#Normalized POP
 npop <- pop |>
   ggplot(aes(x=npop_1, y=npop_0)) +
   #Vertical Line
@@ -356,6 +276,7 @@ npop <- pop |>
 
 p <- plotly::ggplotly(npop, tooltip = "text")
 
+#Z-Score Standardization for Predicted Pressures
 zscore <- pop |>
   ggplot(aes(x=Zscore_25less, y=Zscore_25more)) +
   #Vertical Line
@@ -423,18 +344,19 @@ off <- team |>
   ) |>
   ungroup()
 
+#Pass Rush Units
 def |>
   ggplot(aes(x=NormPOP, y=Zscore)) +
   #Vertical Line
-  geom_vline(xintercept=mean(pop$NormPOP), linetype="dashed", color = "red", size=0.5) +
+  geom_vline(xintercept=mean(def$NormPOP), linetype="dashed", color = "red", size=0.5) +
   #Horizontal Line
-  geom_hline(yintercept=mean(pop$Zscore), linetype="dashed", color = "red", size=0.5) +
+  geom_hline(yintercept=mean(def$Zscore), linetype="dashed", color = "red", size=0.5) +
   #Team Logos
   nflplotR::geom_nfl_logos(aes(team_abbr = team), width = 0.05) +
   #Labels
-  labs(x = "Normalized POP",
+  labs(x = "Normalized POP per Play",
        y = "Predicted Pressures Standardized (PPS)",
-       title = "How well did Defenses Perform Overall?",
+       title = "How well did Pass Rush Units Perform?",
        subtitle = "Through the first eight weeks (2021)") +
   #Themes
   theme_fivethirtyeight() +
@@ -447,18 +369,19 @@ def |>
   scale_y_continuous(breaks = scales::pretty_breaks(n = 8), labels = label_number(accuracy = .01)) +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 8), labels = label_number(accuracy = .001))
 
+#Pass Block Units
 off |>
   ggplot(aes(x=NormPOP, y=Zscore)) +
   #Vertical Line
-  geom_vline(xintercept=mean(pop$NormPOP), linetype="dashed", color = "red", size=0.5) +
+  geom_vline(xintercept=mean(off$NormPOP), linetype="dashed", color = "red", size=0.5) +
   #Horizontal Line
-  geom_hline(yintercept=mean(pop$Zscore), linetype="dashed", color = "red", size=0.5) +
+  geom_hline(yintercept=mean(off$Zscore), linetype="dashed", color = "red", size=0.5) +
   #Team Logos
-  nflplotR::geom_nfl_logos(aes(team_abbr = team), width = 0.05) +
+  nflplotR::geom_nfl_logos(aes(team_abbr = posteam), width = 0.05) +
   #Labels
-  labs(x = "Normalized POP",
+  labs(x = "Normalized POP per Play",
        y = "Predicted Pressures Standardized (PPS)",
-       title = "How well did Defenses Perform Overall?",
+       title = "How well did Pass Block Units Perform?",
        subtitle = "Through the first eight weeks (2021)") +
   #Themes
   theme_fivethirtyeight() +
@@ -468,8 +391,8 @@ off |>
   theme(plot.title = element_text(size = 14, face = "bold"),
         plot.subtitle = element_text(size=12))+
   #Axis Ticks
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 8), labels = label_number(accuracy = .01)) +
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 8), labels = label_number(accuracy = .001))
+  scale_y_reverse(breaks = scales::pretty_breaks(n = 8), labels = label_number(accuracy = .01)) +
+  scale_x_reverse(breaks = scales::pretty_breaks(n = 8), labels = label_number(accuracy = .001))
 
 #Probability Animation
 library(gganimate)
