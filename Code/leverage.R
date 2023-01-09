@@ -105,6 +105,9 @@ setwd("~/BDB23")
 
 lev1 <- read.csv("data/distance.csv")
 # Find Expected Position of QB in 0.5 Seconds
+#Code is copied and modified from this repository:
+#https://github.com/ritchi12/punt_returns_using_the_math_to_find_the_path/blob/main/Models/Code/model_data_prep.R
+
 lev0 <- lev1 |>
   mutate(blocked = ifelse(dist < 2, 1, 0),
          qbs = qbs1/2.04545) |>
